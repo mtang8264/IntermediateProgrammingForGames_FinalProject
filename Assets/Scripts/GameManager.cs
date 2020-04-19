@@ -1,12 +1,14 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
     [SerializeField]
     [Range(0f, 100f)]
     float oxygen;
+    Slider oxygenBar;   // The display bar which shows the oxygen level
 
     [Header("Lungs")]
     [SerializeField]
@@ -21,10 +23,19 @@ public class GameManager : MonoBehaviour
     [SerializeField]
     float inhaleSpeed, exhaleSpeed; // The rate at which the lungs inhale and exhale
     [SerializeField]
+    float oxygenGainSpeed;  // The speed at which the oxygen bar fills up while inhaling
+    [SerializeField]
     float emptyLungSize;    // The scale that the lungs reach when they are empty. We assume they should reach 1f scale while full.
+    float oxygenLossTimer;  // This is the timer used to calculate when you should start losing oxygen
+    [SerializeField]
+    AnimationCurve oxygenLossRate;  // This curve defines how quickly you lose oxygen while not inhaling
+    [SerializeField]
+    float oxygenLossMultiplier; // This is a number multiplied by the oxygen loss rate
 
     void Awake()
     {
+        oxygenBar = GameObject.FindWithTag("OxygenBar").GetComponent<Slider>();
+
         // If the level uses the lungs set up for the lungs
         if (lungsActive)
         {
@@ -36,10 +47,13 @@ public class GameManager : MonoBehaviour
 
     void Update()
     {
+        oxygenBar.value = oxygen;
+
         if(lungsActive)
         {
             DrawLungs();
             UpdateLungState();
+            OxygenLoss();
         }
     }
 
@@ -65,32 +79,61 @@ public class GameManager : MonoBehaviour
                 if (Input.GetKeyDown(inhaleKey))    // The lungs will begin to inhal when you press the inhale key
                 {
                     lungState = LungState.INHALING;
+                    BreathingSoundController.instance.StartInhaling();
                 }
                 break;
             case LungState.INHALING:    // If the lungs are inhaling
+                oxygenLossTimer = 0f;
                 lungCapacity += inhaleSpeed * Time.deltaTime;   // Lung capacity increases at a constant rate while inhaling
+                oxygen += oxygenGainSpeed * Time.deltaTime; // While the lungs are inhaling the oxygen level also increases
                 if (Input.GetKey(inhaleKey) == false || lungCapacity >= 1f) // If the player releases the inhale key or the max lung capacity is reached the lungs begin to hold
                 {
                     lungState = LungState.HOLDING;
+                    BreathingSoundController.instance.StopInhaling();
+                }
+                if(Input.GetKeyDown(exhaleKey)) // If you press the exhale key while still inhaling you will start exhaling
+                {
+                    lungState = LungState.EXHALING;
+                    BreathingSoundController.instance.StartExhaling();
                 }
                 break;
             case LungState.HOLDING: // If the lungs are holding
                 if (Input.GetKeyDown(exhaleKey))    // Pressing the exhale key will begin to exhale
                 {
                     lungState = LungState.EXHALING;
+                    BreathingSoundController.instance.StartExhaling();
                 }
                 break;
             case LungState.EXHALING:    // If the lungs are exhaling
                 if (Input.GetKey(exhaleKey))    // The lungs exhale at a constant rate as long as you continue to hold the exhale key
                 {
                     lungCapacity -= exhaleSpeed * Time.deltaTime;
+                    BreathingSoundController.instance.ResumeExhaling();
+                }
+                else
+                {
+                    BreathingSoundController.instance.PauseExhaling();
                 }
                 if (lungCapacity <= Mathf.Epsilon)  // If the lungs capcity reaches 0 then the lungs are empty
                 {
                     lungState = LungState.EMPTY;
+                    BreathingSoundController.instance.PauseExhaling();
                 }
                 break;
         }
+    }
+    /// <summary>
+    /// This function enforces the loss of oxygen while not breathing
+    /// </summary>
+    void OxygenLoss()
+    {
+        if(lungState == LungState.INHALING)
+        {
+            oxygenLossTimer = 0f;
+            return;
+        }
+        oxygenLossTimer += Time.deltaTime;
+        oxygen -= oxygenLossRate.Evaluate(oxygenLossTimer) * oxygenLossMultiplier * Time.deltaTime;
     }
     #endregion
 }
