@@ -31,6 +31,10 @@ public class GameManager : MonoBehaviour
     AnimationCurve oxygenLossRate;  // This curve defines how quickly you lose oxygen while not inhaling
     [SerializeField]
     float oxygenLossMultiplier; // This is a number multiplied by the oxygen loss rate
+    Slider lungCapacityBar;
+    Image lungCapacityBarFill, lungCapacityBarHandle;
+    [SerializeField]
+    Gradient lungCapacityBarGradient;
 
     void Awake()
     {
@@ -42,6 +46,15 @@ public class GameManager : MonoBehaviour
             lungs = GameObject.FindWithTag("Lungs");
             lungState = LungState.EMPTY;
             lungCapacity = 0f;
+            lungCapacityBar = GameObject.FindWithTag("LungCapacityBar").GetComponent<Slider>();
+            Image[] images = lungCapacityBar.GetComponentsInChildren<Image>();
+            foreach(Image i in images)
+            {
+                if (i.name == "Fill")
+                    lungCapacityBarFill = i;
+                else if (i.name == "Handle")
+                    lungCapacityBarHandle = i;
+            }
         }
     }
 
@@ -67,6 +80,9 @@ public class GameManager : MonoBehaviour
         float s = Mathf.Lerp(emptyLungSize, 1f, lungCapacity);
         Vector3 scale = new Vector3(s, s, s);
         lungs.transform.localScale = scale;
+        lungCapacityBar.value = lungCapacity;
+        lungCapacityBarFill.color = lungCapacityBarGradient.Evaluate(lungCapacity);
+        lungCapacityBarHandle.color = lungCapacityBarGradient.Evaluate(lungCapacity);
     }
     /// <summary>
     /// This function updates the lungState based on which key is pressed.

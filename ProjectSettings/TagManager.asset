@@ -6,6 +6,7 @@ TagManager:
   tags:
   - Lungs
   - OxygenBar
+  - LungCapacityBar
   layers:
   - Default
   - TransparentFX
