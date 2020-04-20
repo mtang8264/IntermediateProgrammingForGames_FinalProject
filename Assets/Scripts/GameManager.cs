@@ -14,7 +14,7 @@ public class GameManager : MonoBehaviour
     [SerializeField]
     bool lungsActive;   // This determines if the lungs are used in this level
     GameObject lungs;   // The game object reference for the lungs
-    enum LungState {EMPTY, INHALING, HOLDING, EXHALING };   // The possible states the lungs can be in
+    public enum LungState {EMPTY, INHALING, HOLDING, EXHALING };   // The possible states the lungs can be in
     LungState lungState;
     [Range(0f,1f)]
     float lungCapacity; // The capacity of the lungs. This is like how much they are between empty(0f) and full(1f)
@@ -71,6 +71,10 @@ public class GameManager : MonoBehaviour
     }
 
     #region Lung_Functions
+    public LungState GetCurrentLungState()
+    {
+        return lungState;
+    }
     /// <summary>
     /// This function updates the visual display for the lungs.
     /// The size of the lungs is just a lerp based on the current lung capacity.
