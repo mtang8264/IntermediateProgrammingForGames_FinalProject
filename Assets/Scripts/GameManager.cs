@@ -11,7 +11,8 @@ public class GameManager : MonoBehaviour
     public float OxygenLevel { get { return oxygen; } }
     Slider oxygenBar;   // The display bar which shows the oxygen level
 
-    float inefficiencyMulti = 1f;
+    float inefficiencyMulti = 1f;   // This variable lowers the amount of oxygen you recieve from breathing based on how long your eyes have been open
+                                    // You can see how it is set in the VisionLoss function in the Eye Functions region
 
     #region Lung Variables
     [Header("Lungs")]
@@ -43,18 +44,17 @@ public class GameManager : MonoBehaviour
     #region Eyes Variables
     [Header("Eyes")]
     [SerializeField]
-    bool eyesActive;
+    bool eyesActive;    // Helps track if the eyes are used in this level
     [SerializeField]
-    Image bloodshotImage, blurImage;
+    Image bloodshotImage, blurImage;    // These are the images on the UI which show the player how bloodshot or blurry their vision is
+    float eyeTimer; // The timer used to track how long the player has gone without blinking
+    bool eyesOpen = true;  // The state of the eyes as either open or closed
     [SerializeField]
-    float eyeTimer;
-    bool eyesOpen;
+    AnimationCurve bloodshotOpacityCurve, blurSizeCurve;    // The animation curves which help the bloodshot and blur effect come in gradually and the faster
     [SerializeField]
-    AnimationCurve bloodshotOpacityCurve, blurSizeCurve;
+    float timeToFullBloodshot, timeToFullBlur;  // The timer until the player's eyes are fully bloodshot or blurry
     [SerializeField]
-    float timeToFullBloodshot, timeToFullBlur;
-    [SerializeField]
-    Animator blinkingAnimator;
+    Animator blinkingAnimator;  // The animator which controlls the eye lids
     #endregion
 
     void Awake()
@@ -76,10 +76,6 @@ public class GameManager : MonoBehaviour
                 else if (i.name == "Handle")
                     lungCapacityBarHandle = i;
             }
-        }
-        if(eyesActive)
-        {
-            eyesOpen = true;
         }
     }
 
@@ -188,14 +184,22 @@ public class GameManager : MonoBehaviour
     }
     #endregion
     #region Eye Functions
+    /// <summary>
+    /// This function just allows other functions to read if they eyes are open
+    /// </summary>
+    /// <returns>Returns true if eyes are open and false if they eyes are closed.</returns>
     public bool GetEyesOpen()
     {
         return eyesOpen;
     }
+    /// <summary>
+    /// This function handles the visual aspects of the eyes.
+    /// This includes blinking as well as the bloodshot and blur effects.
+    /// </summary>
     void DrawEyes()
     {
         blinkingAnimator.SetBool("Open", eyesOpen);
-        if(eyesOpen)
+        if(eyesOpen)    // The bloodshot and blur effects only need to change while the eyes are open
         {
             // Bloodshot
             float t = Mathf.Lerp(0f, 1f, eyeTimer / timeToFullBloodshot);
@@ -209,6 +213,9 @@ public class GameManager : MonoBehaviour
             blurImage.rectTransform.localScale = new Vector3(s, s, s);
         }
     }
+    /// <summary>
+    /// This function changes the eyesOpen variable when the correct keys are pressed.
+    /// </summary>
     void UpdateEyesState()
     {
         if(Input.GetKeyDown(KeyCode.DownArrow) && !Input.GetKeyDown(KeyCode.UpArrow) && eyesOpen)   // Close eyes
@@ -220,8 +227,13 @@ public class GameManager : MonoBehaviour
             eyesOpen = true;
         }
     }
+    /// <summary>
+    /// This function handles the timer for vision loss.
+    /// It also controls the inefficiency multiplier due to loss of vision.
+    /// </summary>
     void VisionLoss()
     {
+        // If the eyes are open then the timer continues and if they are closed the timer is held at 0
         if(eyesOpen)
         {
             eyeTimer += Time.deltaTime;
@@ -231,6 +243,7 @@ public class GameManager : MonoBehaviour
             eyeTimer = 0f;
         }
 
+        // This calculates how much of your breathing and other effects are reduced by based on how long you are in to the blur effect
         float t = eyeTimer - timeToFullBloodshot;
         t = t / (timeToFullBlur - timeToFullBloodshot);
         inefficiencyMulti = Mathf.Lerp(1f, 0f, t);
