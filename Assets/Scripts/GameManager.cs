@@ -8,15 +8,19 @@ public class GameManager : MonoBehaviour
     [SerializeField]
     [Range(0f, 100f)]
     float oxygen;
+    public float OxygenLevel { get { return oxygen; } }
     Slider oxygenBar;   // The display bar which shows the oxygen level
 
+    float inefficiencyMulti = 1f;
+
+    #region Lung Variables
     [Header("Lungs")]
     [SerializeField]
     bool lungsActive;   // This determines if the lungs are used in this level
     GameObject lungs;   // The game object reference for the lungs
-    public enum LungState {EMPTY, INHALING, HOLDING, EXHALING };   // The possible states the lungs can be in
+    public enum LungState { EMPTY, INHALING, HOLDING, EXHALING };   // The possible states the lungs can be in
     LungState lungState;
-    [Range(0f,1f)]
+    [Range(0f, 1f)]
     float lungCapacity; // The capacity of the lungs. This is like how much they are between empty(0f) and full(1f)
     [SerializeField]
     KeyCode inhaleKey, exhaleKey;   // The keys used to inhale and exhale
@@ -35,6 +39,23 @@ public class GameManager : MonoBehaviour
     Image lungCapacityBarFill, lungCapacityBarHandle;
     [SerializeField]
     Gradient lungCapacityBarGradient;
+    #endregion
+    #region Eyes Variables
+    [Header("Eyes")]
+    [SerializeField]
+    bool eyesActive;
+    [SerializeField]
+    Image bloodshotImage, blurImage;
+    [SerializeField]
+    float eyeTimer;
+    bool eyesOpen;
+    [SerializeField]
+    AnimationCurve bloodshotOpacityCurve, blurSizeCurve;
+    [SerializeField]
+    float timeToFullBloodshot, timeToFullBlur;
+    [SerializeField]
+    Animator blinkingAnimator;
+    #endregion
 
     void Awake()
     {
@@ -48,7 +69,7 @@ public class GameManager : MonoBehaviour
             lungCapacity = 0f;
             lungCapacityBar = GameObject.FindWithTag("LungCapacityBar").GetComponent<Slider>();
             Image[] images = lungCapacityBar.GetComponentsInChildren<Image>();
-            foreach(Image i in images)
+            foreach (Image i in images)
             {
                 if (i.name == "Fill")
                     lungCapacityBarFill = i;
@@ -56,21 +77,31 @@ public class GameManager : MonoBehaviour
                     lungCapacityBarHandle = i;
             }
         }
+        if(eyesActive)
+        {
+            eyesOpen = true;
+        }
     }
 
     void Update()
     {
         oxygenBar.value = oxygen;
 
-        if(lungsActive)
+        if (lungsActive)
         {
             DrawLungs();
             UpdateLungState();
             OxygenLoss();
         }
+        if (eyesActive)
+        {
+            DrawEyes();
+            UpdateEyesState();
+            VisionLoss();
+        }
     }
 
-    #region Lung_Functions
+    #region Lung Functions
     public LungState GetCurrentLungState()
     {
         return lungState;
@@ -105,13 +136,13 @@ public class GameManager : MonoBehaviour
             case LungState.INHALING:    // If the lungs are inhaling
                 oxygenLossTimer = 0f;
                 lungCapacity += inhaleSpeed * Time.deltaTime;   // Lung capacity increases at a constant rate while inhaling
-                oxygen += oxygenGainSpeed * Time.deltaTime; // While the lungs are inhaling the oxygen level also increases
+                oxygen += oxygenGainSpeed * Time.deltaTime * inefficiencyMulti; // While the lungs are inhaling the oxygen level also increases
                 if (Input.GetKey(inhaleKey) == false || lungCapacity >= 1f) // If the player releases the inhale key or the max lung capacity is reached the lungs begin to hold
                 {
                     lungState = LungState.HOLDING;
                     BreathingSoundController.instance.StopInhaling();
                 }
-                if(Input.GetKeyDown(exhaleKey)) // If you press the exhale key while still inhaling you will start exhaling
+                if (Input.GetKeyDown(exhaleKey)) // If you press the exhale key while still inhaling you will start exhaling
                 {
                     lungState = LungState.EXHALING;
                     BreathingSoundController.instance.StartExhaling();
@@ -147,13 +178,62 @@ public class GameManager : MonoBehaviour
     /// </summary>
     void OxygenLoss()
     {
-        if(lungState == LungState.INHALING)
+        if (lungState == LungState.INHALING)
         {
             oxygenLossTimer = 0f;
             return;
         }
         oxygenLossTimer += Time.deltaTime;
         oxygen -= oxygenLossRate.Evaluate(oxygenLossTimer) * oxygenLossMultiplier * Time.deltaTime;
+    }
+    #endregion
+    #region Eye Functions
+    public bool GetEyesOpen()
+    {
+        return eyesOpen;
+    }
+    void DrawEyes()
+    {
+        blinkingAnimator.SetBool("Open", eyesOpen);
+        if(eyesOpen)
+        {
+            // Bloodshot
+            float t = Mathf.Lerp(0f, 1f, eyeTimer / timeToFullBloodshot);
+            t = bloodshotOpacityCurve.Evaluate(t);
+            bloodshotImage.color = new Color(1f, 1f, 1f, t);
+            // Blur
+            float s = eyeTimer - timeToFullBloodshot;
+            s = s / (timeToFullBlur - timeToFullBloodshot);
+            s = Mathf.Lerp(0f, 1f, s);
+            s = blurSizeCurve.Evaluate(s);
+            blurImage.rectTransform.localScale = new Vector3(s, s, s);
+        }
+    }
+    void UpdateEyesState()
+    {
+        if(Input.GetKeyDown(KeyCode.DownArrow) && !Input.GetKeyDown(KeyCode.UpArrow) && eyesOpen)   // Close eyes
+        {
+            eyesOpen = false;
+        }
+        else if(Input.GetKeyDown(KeyCode.UpArrow) && !Input.GetKeyDown(KeyCode.DownArrow) && !eyesOpen) // Open eyes
+        {
+            eyesOpen = true;
+        }
+    }
+    void VisionLoss()
+    {
+        if(eyesOpen)
+        {
+            eyeTimer += Time.deltaTime;
+        }
+        else
+        {
+            eyeTimer = 0f;
+        }
+
+        float t = eyeTimer - timeToFullBloodshot;
+        t = t / (timeToFullBlur - timeToFullBloodshot);
+        inefficiencyMulti = Mathf.Lerp(1f, 0f, t);
     }
     #endregion
 }

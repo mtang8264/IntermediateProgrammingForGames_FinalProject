@@ -1,11 +1,13 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
+using UnityEngine.UI;
 
-public abstract class LevelController : MonoBehaviour
+public class LevelController : MonoBehaviour
 {
-    bool begun;
-    Coroutine coroutine;
+    protected bool begun;
+    protected Coroutine coroutine;
 
     void Start()
     {
@@ -26,5 +28,8 @@ public abstract class LevelController : MonoBehaviour
         coroutine = null;
     }
 
-    public abstract IEnumerator LevelRoutine();
+    public virtual IEnumerator LevelRoutine()
+    {
+        yield return null;
+    }
 }

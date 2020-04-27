@@ -39,6 +39,9 @@ public class Level_00_Breathing_Tutorial : LevelController
         // Wait for an amount of time and then hide the text and finish
         yield return new WaitForSeconds(lastInstructionDuration);
         text.GetComponent<Animator>().SetBool("Visible", false);
-        yield return null;
+
+        yield return new WaitUntil(() => gameManager.OxygenLevel == 100f);
+
+        // Level is finished but needs to be implemented
     }
 }
